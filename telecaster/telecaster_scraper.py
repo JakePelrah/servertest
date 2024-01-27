@@ -2,55 +2,63 @@ import requests
 from bs4 import BeautifulSoup
 import csv
 import os
-import shutil
+import threading
+import boto3
+import csv
 
-def make_request(url):
+    
+outfile = open('fender-telecaster_index.csv', 'a')
+indexwriter = csv.writer(outfile, delimiter=',')
+
+session = boto3.session.Session()
+client = session.client('s3',
+                        region_name='nyc3',
+                        endpoint_url='https://nyc3.digitaloceanspaces.com',
+                        aws_access_key_id='DO00NMERU2TN2VAJY37W',
+                        aws_secret_access_key='BautF79hHbv5tJMgmVpzszdY/wRu/kXMSlwlWibRyHQ')
+
+
+def make_request(row):
+    url = row[5]
     response = requests.get(url)
-    return response.text
+    soup = BeautifulSoup(response.text, 'lxml')
+    items = soup.find_all('div', {"class": "lightbox-image-item"})
+   
+    for item in items:
+        img_url = item.find('img')['src'].split('t_card-square')[-1]
+        try:
+            new_url = 'https://rvb-img.reverb.com/image/upload/' + img_url
+            thread = threading.Thread(target=download_image, args=(
+                    row,), kwargs={'img_url': img_url, 'new_url': new_url})
+            thread.start()
+            thread.join()
+        except:
+            print(img_url)
+    
 
 
-def make_soup(html):
-    soup = BeautifulSoup(html, 'lxml')
-    return soup
-
+def download_image(row, new_url, img_url):
+    r = requests.get(new_url)
+    if r.status_code == 200:
+        try:     
+            client.get_object(Bucket='egil-ic', Key='fender-telecaster/' + img_url.split('/')[-1])
+            print('file exists') 
+            indexwriter.writerow(['fender-telecaster', row[2] + '_' + row[1] +'_'+ img_url.split('/')[-1]])
+        except:
+            client.put_object(Body=r.content, Bucket='egil-ic', Key='fender-telecaster/' + img_url.split('/')[-1])
+            indexwriter.writerow(['fender-telecaster', row[2] + '_' + row[1] +'_'+ img_url.split('/')[-1]])
+    outfile.flush()
+           
+      
+    
 
 # Open file
-with open('fender_telecaster.csv') as file_obj:
-
-    # Create reader object by passing the file
-    # object to reader method
+i=0
+with open('telecaster.csv') as file_obj:
     reader_obj = csv.reader(file_obj)
-
-    # Iterate over each row in the csv
-    # file using reader object
-    i=0
     for row in reader_obj:
-        url = row[5]
-        folder = 'images/' + row[2] + '-' + row[1]
-        # if folder does not exist, create it and download images
-        try:
-            os.makedirs(folder, exist_ok=False)
-            html = make_request(row[5])
-            soup = make_soup(html)
-            items = soup.find_all('div', {"class": "lightbox-image-item"})
-            for item in items:
-                img_url = item.find('img')['src'].split('t_card-square')[-1]
-                try:
-                    new_url = 'https://rvb-img.reverb.com/image/upload/' + img_url
-                    r = requests.get(new_url, stream=True)
-                    if r.status_code == 200:
-                        filename = folder + '/' + img_url.split('/')[-1]
-                        print(filename)
-                        os.makedirs(os.path.dirname(filename), exist_ok=True)
-                        with open(filename, 'wb') as f:
-                            for chunk in r:
-                                f.write(chunk)
-                        shutil.copy(filename, 'telecaster_merged/' + img_url.split('/')[-1])
-                        
-                except:
-                    print(img_url)
-        except:
-            print('folder exists',folder)
-    
-    
-
+        print(i)
+        thread = threading.Thread(target=make_request, args=(row,))
+        thread.start()
+        thread.join()
+        i+=1

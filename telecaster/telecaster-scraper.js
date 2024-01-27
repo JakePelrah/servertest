@@ -13,7 +13,7 @@ function processData(data) {
         const uuid = uuidv4()
         // write to csv
         if (id) {
-            fs.appendFile('fender_telecaster.csv', `${uuid},${id},${listing.slug},${make},${model},${link + id + '-' + listing.slug}\n`, function (err) {
+            fs.appendFile('telecaster.csv', `${uuid},${id},${listing.slug},${make},${model},${link + id + '-' + listing.slug}\n`, function (err) {
                 if (err) throw err;
                 // console.log('Saved!');
             });
