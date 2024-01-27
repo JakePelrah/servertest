@@ -1,0 +1,14 @@
+{
+    "name": "my-package",
+    "version": "1.0.0",
+    "type": "module",
+    "main": "reverb-scraper.js",
+    "scripts": {
+        "start": "node reverb-scraper.js"
+    },
+    "dependencies": {
+        "express": "^4.17.1",
+        "request": "^2.88.2",
+        "uuid": "^9.0.1"
+    }
+}
