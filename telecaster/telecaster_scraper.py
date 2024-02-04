@@ -24,25 +24,27 @@ def make_request(row):
     soup = BeautifulSoup(response.text, 'lxml')
     items = soup.find_all('div', {"class": "lightbox-image-item"})
    
+   
     for item in items:
         img_url = item.find('img')['src'].split('t_card-square')[-1]
-        try:
-            new_url = 'https://rvb-img.reverb.com/image/upload/' + img_url
-            thread = threading.Thread(target=download_image, args=(
-                    row,), kwargs={'img_url': img_url, 'new_url': new_url})
-            thread.start()
-            thread.join()
-        except:
-            print(img_url)
-    
+        if  client.get_object(Bucket='egil-ic', Key='fender-telecaster/' + img_url.split('/')[-1]):
+            print('file exists') 
+        else:
+            try:
+                new_url = 'https://rvb-img.reverb.com/image/upload/' + img_url
+                thread = threading.Thread(target=download_image, args=(
+                        row,), kwargs={'img_url': img_url, 'new_url': new_url})
+                thread.start()
+                thread.join()
+            except:
+                print(img_url)
+        
 
 
 def download_image(row, new_url, img_url):
     r = requests.get(new_url)
     if r.status_code == 200:
         try:     
-            client.get_object(Bucket='egil-ic', Key='fender-telecaster/' + img_url.split('/')[-1])
-            print('file exists') 
             indexwriter.writerow(['fender-telecaster', row[2] + '_' + row[1] +'_'+ img_url.split('/')[-1]])
         except:
             client.put_object(Body=r.content, Bucket='egil-ic', Key='fender-telecaster/' + img_url.split('/')[-1])
